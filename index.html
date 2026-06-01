@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>史楚普效應實驗 - 雲端數據中央後台</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background-color: #0f111a;
+            color: #ffffff;
+            margin: 0;
+            padding: 30px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #2d334a;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: #4dadff;
+            margin: 0;
+            font-size: 28px;
+        }
+        .btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(40,167,69,0.3);
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            background-color: #218838;
+            transform: translateY(-2px);
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background-color: #1a1d29;
+            border: 1px solid #2d334a;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .card h3 {
+            margin: 0 0 10px 0;
+            color: #cdcefe;
+            font-size: 16px;
+        }
+        .card .value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #00ffcc;
+        }
+
+        .table-container {
+            background-color: #1a1d29;
+            border: 1px solid #2d334a;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+        th, td {
+            padding: 14px 20px;
+            border-bottom: 1px solid #2d334a;
+        }
+        th {
+            background-color: #24293c;
+            color: #4dadff;
+            font-weight: bold;
+        }
+        tr:hover {
+            background-color: #1f2335;
+        }
+        .status-correct {
+            color: #33FF33;
+            font-weight: bold;
+        }
+        .status-wrong {
+            color: #FF4A4A;
+            font-weight: bold;
+        }
+        .status-timeout {
+            color: #ffb74d;
+            font-style: italic;
+        }
+    </style>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        // ✅ 已經同步套入你專屬的 Firebase Config 欄位
+        const firebaseConfig = {
+            apiKey: "AIzaSyA8n5tXK2ObAWT9KU5j8I3FWtC2SWxQi9U",
+            authDomain: "stroop-8b787.firebaseapp.com",
+            databaseURL: "https://stroop-8b787-default-rtdb.firebaseio.com",
+            projectId: "stroop-8b787",
+            storageBucket: "stroop-8b787.firebasestorage.app",
+            messagingSenderId: "880652461108",
+            appId: "1:880652461108:web:e14317f54e46454ed31661",
+            measurementId: "G-MVT8W43KLX"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const database = firebase.database();
+        
+        let allLogs = []; 
+
+        window.onload = function() {
+            const dbRef = database.ref('stroop_results');
+            
+            dbRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                allLogs = [];
+                
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        allLogs.push(data[key]);
+                    });
+                    allLogs.reverse(); 
+                }
+                
+                calculateMetrics(allLogs);
+                renderTable(allLogs);
+            }, (error) => {
+                console.error("讀取 Firebase 失敗，請確認資料庫 Rules 規則已開啟:", error);
+            });
+        };
+
+        function calculateMetrics(logs) {
+            const totalTrials = logs.length;
+            const uniqueUsers = new Set(logs.map(log => log.Username));
+            const totalUsers = uniqueUsers.size;
+            const validRTs = logs.filter(log => log.Response !== 'Timeout').map(log => log.RT_ms);
+            const avgRT = validRTs.length > 0 
+                ? Math.round(validRTs.reduce((a, b) => a + b, 0) / validRTs.length) 
+                : 0;
+
+            document.getElementById('metric-users').innerText = totalUsers;
+            document.getElementById('metric-trials').innerText = totalTrials;
+            document.getElementById('metric-rt').innerText = avgRT + " ms";
+        }
+
+        function renderTable(logs) {
+            const tbody = document.getElementById('data-tbody');
+            tbody.innerHTML = '';
+
+            if (logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#cdcefe;">目前資料庫尚無受試者數據。</td></tr>`;
+                return;
+            }
+
+            const typeMapping = { 'word': '判斷字形', 'audio': '判斷聲音', 'color': '判斷顏色' };
+
+            logs.forEach(log => {
+                let tr = document.createElement('tr');
+                let accHtml = '';
+                if (log.Response === 'Timeout') {
+                    accHtml = `<span class="status-timeout">超時 (3s)</span>`;
+                } else {
+                    accHtml = log.Accuracy === 1 
+                        ? `<span class="status-correct">正確</span>` 
+                        : `<span class="status-wrong">錯誤</span>`;
+                }
+
+                tr.innerHTML = `
+                    <td><b>${log.Username || '無名'}</b></td>
+                    <td>階段 ${log.Phase || '-'} (${typeMapping[log.PhaseType] || log.PhaseType})</td>
+                    <td>第 ${log.Trial || '-'} 題</td>
+                    <td>${log.Congruency === 'Congruent' ? '一致' : '不一致'}</td>
+                    <td>${log.Word} / <span style="color:${getColorCode(log.Color)}">${log.Color}</span> / 🔊${log.Audio}</td>
+                    <td>${log.Response === 'Timeout' ? '-' : log.Response}</td>
+                    <td>${accHtml}</td>
+                    <td><b>${log.RT_ms}</b> ms</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function getColorCode(colorStr) {
+            const codes = { '紅': '#FF4A4A', '綠': '#33FF33', '藍': '#4DA6FF', '黃': '#FFFF33' };
+            return codes[colorStr] || '#fff';
+        }
+
+        function exportAllCSV() {
+            if (allLogs.length === 0) {
+                alert("目前沒有數據可以導出！");
+                return;
+            }
+
+            let csvContent = '\uFEFF'; 
+            csvContent += "受試者代號,實驗階段,任務類型,試次編號,刺激一致性,呈現字面,呈現顏色,播放聲音,正確目標,受試者反應,是否正確(1=是),反應時間(ms),紀錄時間\n";
+            
+            const exportData = [...allLogs].reverse();
+
+            exportData.forEach(row => {
+                csvContent += `"${row.Username}",${row.Phase},${row.PhaseType},${row.Trial},${row.Congruency},${row.Word},${row.Color},${row.Audio},${row.Target},${row.Response},${row.Accuracy},${row.RT_ms},"${row.Timestamp}"\n`;
+            });
+
+            let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            let url = URL.createObjectURL(blob);
+            let link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Stroop_Master_Database_${new Date().toISOString().slice(0,10)}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div>
+            <h1>🧠 史楚普效應實驗 - 雲端數據中央後台</h1>
+            <p style="color: #cdcefe; margin: 5px 0 0 0;">專案 ID: stroop-8b787 ｜ 本後台已與雲端即時連線。</p>
+        </div>
+        <button class="btn" onclick="exportAllCSV()">📥 匯出完整全體數據 (Excel CSV)</button>
+    </header>
+
+    <div class="dashboard-grid">
+        <div class="card">
+            <h3>受試者總人數</h3>
+            <div class="value" id="metric-users">0</div>
+        </div>
+        <div class="card">
+            <h3>資料庫總累計試次 (Trials)</h3>
+            <div class="value" id="metric-trials">0</div>
+        </div>
+        <div class="card">
+            <h3>全體有效平均反應時間</h3>
+            <div class="value" id="metric-rt">0 ms</div>
+        </div>
+    </div>
+
+    <h2>📋 即時觀測數據流 (最新資料排在最上方)</h2>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>受試者</th>
+                    <th>實驗階段</th>
+                    <th>試次</th>
+                    <th>一致性</th>
+                    <th>刺激特徵 (字/色/音)</th>
+                    <th>受試者作答</th>
+                    <th>判定結果</th>
+                    <th>反應時間</th>
+                </tr>
+            </thead>
+            <tbody id="data-tbody">
+                <tr>
+                    <td colspan="8" style="text-align:center; color:#cdcefe; padding: 30px;">雲端資料庫連線中...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</body>
+</html>
