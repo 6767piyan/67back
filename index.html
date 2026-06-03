@@ -112,6 +112,9 @@
             margin-bottom: 20px;
             border: 1px solid #ff4a4a;
             display: none;
+            color: #ff8888;
+            font-family: monospace;
+            line-height: 1.5;
         }
     </style>
 
@@ -119,7 +122,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // ✅ 這裡已經完美置入你的真實 Firebase Config 憑證
         const firebaseConfig = {
             apiKey: "AIzaSyA8n5tXK2ObAWT9KU5j8I3FWtC2SWxQi9U",
             authDomain: "stroop-8b787.firebaseapp.com",
@@ -131,30 +133,35 @@
             measurementId: "G-MVT8W43KLX"
         };
 
-        // 初始化 Firebase
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
+        let database;
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            database = firebase.database();
+        } catch(e) {
+            window.addEventListener('load', () => {
+                showAdminDebug("Firebase 初始化失敗: " + e.message);
+            });
         }
-        const database = firebase.database();
         
         let allLogs = []; 
 
         window.onload = function() {
+            if (!database) return;
             const dbRef = database.ref('stroop_results');
             
-            // 開啟資料庫即時監聽
+            // 監聽即時數據流
             dbRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 allLogs = [];
                 
-                // 隱藏錯誤提示（如果連線成功）
                 document.getElementById('debug-container').style.display = 'none';
 
                 if (data) {
                     Object.keys(data).forEach(key => {
                         allLogs.push(data[key]);
                     });
-                    // 時間倒序排列（最新作答顯示在最上面）
                     allLogs.reverse(); 
                 }
                 
@@ -162,22 +169,22 @@
                 renderTable(allLogs);
             }, (error) => {
                 console.error("Firebase 連線失敗:", error);
-                // 顯示錯誤訊息在畫面上，方便你在手機或線上直接除錯
-                const debugBox = document.getElementById('debug-container');
-                debugBox.style.display = 'block';
-                debugBox.innerHTML = `❌ <b>Firebase 連線失敗！</b><br>錯誤原因：${error.message}<br><br>💡 <i>小提示：請確認你 Firebase 後台的 Realtime Database 內的「Rules（規則）」已將 read 與 write 改為 true，並點擊發布。</i>`;
+                showAdminDebug(`❌ <b>Firebase 後台連線失敗！</b><br>錯誤代碼：${error.code}<br>詳細原因：${error.message}<br><br>💡 <i>請確認你 Firebase 控制台的 Realtime Database 內的「Rules（規則）」已將 .read 與 .write 改為 true 並點擊發布。</i>`);
             });
         };
 
-        // 📊 計算圓餅儀表數據
+        function showAdminDebug(msg) {
+            const debugBox = document.getElementById('debug-container');
+            if (debugBox) {
+                debugBox.style.display = 'block';
+                debugBox.innerHTML = msg;
+            }
+        }
+
         function calculateMetrics(logs) {
             const totalTrials = logs.length;
-            
-            // 受試者去重
             const uniqueUsers = new Set(logs.map(log => log.Username));
             const totalUsers = uniqueUsers.size;
-            
-            // 平均反應時間（排除超時試次）
             const validRTs = logs.filter(log => log.Response !== 'Timeout').map(log => log.RT_ms);
             const avgRT = validRTs.length > 0 
                 ? Math.round(validRTs.reduce((a, b) => a + b, 0) / validRTs.length) 
@@ -188,7 +195,6 @@
             document.getElementById('metric-rt').innerText = avgRT + " ms";
         }
 
-        // 📋 渲染流水帳表格
         function renderTable(logs) {
             const tbody = document.getElementById('data-tbody');
             tbody.innerHTML = '';
@@ -231,7 +237,6 @@
             return codes[colorStr] || '#fff';
         }
 
-        // 📥 匯出全體大數據 CSV 檔
         function exportAllCSV() {
             if (allLogs.length === 0) {
                 alert("目前沒有數據可以導出！");
@@ -241,7 +246,6 @@
             let csvContent = '\uFEFF'; 
             csvContent += "受試者代號,實驗階段,任務類型,試次編號,刺激一致性,呈現字面,呈現顏色,播放聲音,正確目標,受試者反應,是否正確(1=是),反應時間(ms),紀錄時間\n";
             
-            // 反轉回正常時間順序（舊到新）匯出
             const exportData = [...allLogs].reverse();
 
             exportData.forEach(row => {
@@ -266,7 +270,7 @@
     <header>
         <div>
             <h1>🧠 史楚普效應實驗 - 雲端數據中央後台</h1>
-            <p style="color: #cdcefe; margin: 5px 0 0 0;">專案 ID: stroop-8b787 ｜ 已配置 GitHub Pages 專屬安全連線機制。</p>
+            <p style="color: #cdcefe; margin: 5px 0 0 0;">專案 ID: stroop-8b787 ｜ 已配置安全連線核心。</p>
         </div>
         <button class="btn" onclick="exportAllCSV()">📥 匯出完整全體數據 (Excel CSV)</button>
     </header>
