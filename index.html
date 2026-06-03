@@ -3,119 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>史楚普效應實驗 - 雲端數據中央後台</title>
+    <title>史楚普效應實驗 - 雲端數據中央後台 (管理員版)</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            background-color: #0f111a;
-            color: #ffffff;
-            margin: 0;
-            padding: 30px;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid #2d334a;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-        }
-        h1 {
-            color: #4dadff;
-            margin: 0;
-            font-size: 28px;
-        }
-        .btn {
-            background-color: #28a745;
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 8px;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(40,167,69,0.3);
-            transition: all 0.2s;
-        }
-        .btn:hover {
-            background-color: #218838;
-            transform: translateY(-2px);
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background-color: #0f111a; color: #ffffff; margin: 0; padding: 30px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2d334a; padding-bottom: 20px; margin-bottom: 30px; }
+        h1 { color: #4dadff; margin: 0; font-size: 28px; }
         
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .card {
-            background-color: #1a1d29;
-            border: 1px solid #2d334a;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-        }
-        .card h3 {
-            margin: 0 0 10px 0;
-            color: #cdcefe;
-            font-size: 16px;
-        }
-        .card .value {
-            font-size: 32px;
-            font-weight: bold;
-            color: #00ffcc;
-        }
+        .btn-group { display: flex; gap: 10px; }
+        .btn { color: white; border: none; padding: 12px 25px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+        .btn-csv { background-color: #28a745; box-shadow: 0 4px 15px rgba(40,167,69,0.3); }
+        .btn-csv:hover { background-color: #218838; transform: translateY(-2px); }
+        .btn-clear { background-color: #dc3545; box-shadow: 0 4px 15px rgba(220,53,69,0.3); }
+        .btn-clear:hover { background-color: #bd2130; transform: translateY(-2px); }
+        
+        .btn-delete-single { background-color: #e44d5d; color: white; border: none; padding: 5px 12px; font-size: 13px; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        .btn-delete-single:hover { background-color: #bd2130; }
 
-        .table-container {
-            background-color: #1a1d29;
-            border: 1px solid #2d334a;
-            border-radius: 12px;
-            overflow: hidden;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-        }
-        th, td {
-            padding: 14px 20px;
-            border-bottom: 1px solid #2d334a;
-        }
-        th {
-            background-color: #24293c;
-            color: #4dadff;
-            font-weight: bold;
-        }
-        tr:hover {
-            background-color: #1f2335;
-        }
-        .status-correct {
-            color: #33FF33;
-            font-weight: bold;
-        }
-        .status-wrong {
-            color: #FF4A4A;
-            font-weight: bold;
-        }
-        .status-timeout {
-            color: #ffb74d;
-            font-style: italic;
-        }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+        .card { background-color: #1a1d29; border: 1px solid #2d334a; border-radius: 12px; padding: 20px; text-align: center; }
+        .card h3 { margin: 0 0 10px 0; color: #cdcefe; font-size: 16px; }
+        .card .value { font-size: 32px; font-weight: bold; color: #00ffcc; }
+
+        .table-container { background-color: #1a1d29; border: 1px solid #2d334a; border-radius: 12px; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; text-collapse: left; }
+        th, td { padding: 14px 20px; border-bottom: 1px solid #2d334a; text-align: left; }
+        th { background-color: #24293c; color: #4dadff; font-weight: bold; }
+        tr:hover { background-color: #1f2335; }
+        .status-correct { color: #33FF33; font-weight: bold; }
+        .status-wrong { color: #FF4A4A; font-weight: bold; }
+        .status-timeout { color: #ffb74d; font-style: italic; }
     </style>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // 後台同步配置為新加坡主機節點
         const firebaseConfig = {
             apiKey: "AIzaSyA8n5tXK2ObAWT9KU5j8I3FWtC2SWxQi9U",
             authDomain: "stroop-8b787.firebaseapp.com",
-            databaseURL: "https://stroop-8b787-default-rtdb.asia-southeast1.firebasedatabase.app", // 同步修正
+            databaseURL: "https://stroop-8b787-default-rtdb.asia-southeast1.firebasedatabase.app", 
             projectId: "stroop-8b787",
             storageBucket: "stroop-8b787.firebasestorage.app",
             messagingSenderId: "880652461108",
@@ -128,16 +55,19 @@
         let allLogs = []; 
 
         window.onload = function() {
-            // 監聽即時數據流
+            // 即時監聽與自動刷新
             database.ref('stroop_results').on('value', (snapshot) => {
                 const data = snapshot.val();
                 allLogs = [];
 
                 if (data) {
                     Object.keys(data).forEach(key => {
-                        // 排除最早過濾掉的單題測試用假數據
-                        if(data[key].PhaseType !== "test" && data[key].PhaseType !== "ForceConnect") {
-                            allLogs.push(data[key]);
+                        // 將 Firebase 自動生成的流水號識別碼 (key) 塞進物件裡，刪除時才抓得到
+                        let item = data[key];
+                        item.firebaseKey = key; 
+                        
+                        if(item.PhaseType !== "test" && item.PhaseType !== "ForceConnect") {
+                            allLogs.push(item);
                         }
                     });
                     allLogs.reverse(); 
@@ -149,17 +79,10 @@
         };
 
         function calculateMetrics(logs) {
-            const totalTrials = logs.length;
-            const uniqueUsers = new Set(logs.map(log => log.Username));
-            const totalUsers = uniqueUsers.size;
+            document.getElementById('metric-users').innerText = new Set(logs.map(log => log.Username)).size;
+            document.getElementById('metric-trials').innerText = logs.length;
             const validRTs = logs.filter(log => log.Response !== 'Timeout').map(log => log.RT_ms);
-            const avgRT = validRTs.length > 0 
-                ? Math.round(validRTs.reduce((a, b) => a + b, 0) / validRTs.length) 
-                : 0;
-
-            document.getElementById('metric-users').innerText = totalUsers;
-            document.getElementById('metric-trials').innerText = totalTrials;
-            document.getElementById('metric-rt').innerText = avgRT + " ms";
+            document.getElementById('metric-rt').innerText = (validRTs.length > 0 ? Math.round(validRTs.reduce((a, b) => a + b, 0) / validRTs.length) : 0) + " ms";
         }
 
         function renderTable(logs) {
@@ -167,7 +90,7 @@
             tbody.innerHTML = '';
 
             if (logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#cdcefe; padding: 20px;">目前雲端資料庫內沒有任何數據，請前台網頁進行作答。</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#cdcefe; padding: 20px;">目前資料庫空空如也...</td></tr>`;
                 return;
             }
 
@@ -175,16 +98,8 @@
 
             logs.forEach(log => {
                 let tr = document.createElement('tr');
-                let accHtml = '';
+                let accHtml = log.Response === 'Timeout' ? `<span class="status-timeout">超時</span>` : (log.Accuracy === 1 ? `<span class="status-correct">正確</span>` : `<span class="status-wrong">錯誤</span>`);
                 
-                if (log.Response === 'Timeout') {
-                    accHtml = `<span class="status-timeout">超時 (3s)</span>`;
-                } else {
-                    accHtml = log.Accuracy === 1 
-                        ? `<span class="status-correct">正確</span>` 
-                        : `<span class="status-wrong">錯誤</span>`;
-                }
-
                 tr.innerHTML = `
                     <td><b>${log.Username || '無名'}</b></td>
                     <td>${typeMapping[log.PhaseType] || log.PhaseType}</td>
@@ -194,67 +109,70 @@
                     <td>${log.Response === 'Timeout' ? '-' : log.Response}</td>
                     <td>${accHtml}</td>
                     <td><b>${log.RT_ms || '0'}</b> ms</td>
+                    <td><button class="btn-delete-single" onclick="deleteSingleRecord('${log.firebaseKey}')">刪除</button></td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
         function getColorCode(colorStr) {
-            const codes = { '紅': '#FF4A4A', '綠': '#33FF33', '藍': '#4DA6FF', '黃': '#FFFF33' };
-            return codes[colorStr] || '#fff';
+            return { '紅': '#FF4A4A', '綠': '#33FF33', '藍': '#4DA6FF', '黃': '#FFFF33' }[colorStr] || '#fff';
+        }
+
+        // 🔥 刪除單筆資料功能
+        function deleteSingleRecord(key) {
+            if (confirm("⚠️ 確定要刪除這一筆測試數據嗎？刪除後無法復原！")) {
+                database.ref('stroop_results').child(key).remove()
+                    .then(() => alert("🎉 單筆數據已成功刪除！"))
+                    .catch(err => alert("❌ 刪除失敗: " + err.message));
+            }
+        }
+
+        // 🔥 清空整個資料庫功能
+        function clearAllDatabase() {
+            if (confirm("🛑 🔥【警告】您即將清空整個資料庫的所有數據！\n\n這將刪除全體受試者的所有紀錄，確定要繼續嗎？")) {
+                let doubleCheck = prompt("為了防止誤觸，請在下方輸入大寫的 CLEAR 來執行清空：");
+                if (doubleCheck === "CLEAR") {
+                    database.ref('stroop_results').remove()
+                        .then(() => alert("🧹 資料庫已徹底清空！舊數據已全部抹除。"))
+                        .catch(err => alert("❌ 清空失敗: " + err.message));
+                } else {
+                    alert("🔒 取消操作。輸入驗證碼不正確，數據未變動。");
+                }
+            }
         }
 
         function exportAllCSV() {
-            if (allLogs.length === 0) {
-                alert("目前沒有數據可以導出！");
-                return;
-            }
-
-            let csvContent = '\uFEFF'; 
-            csvContent += "受試者代號,實驗階段,任務類型,試次編號,刺激一致性,呈現字面,呈現顏色,播放聲音,正確目標,受試者反應,是否正確(1=是),反應時間(ms),紀錄時間\n";
-            
-            const exportData = [...allLogs].reverse();
-
-            exportData.forEach(row => {
+            if (allLogs.length === 0) { alert("目前沒有數據可以導出！"); return; }
+            let csvContent = '\uFEFF受試者代號,實驗階段,任務類型,試次編號,刺激一致性,呈現字面,呈現顏色,播放聲音,正確目標,受試者反應,是否正確(1=是),反應時間(ms),紀錄時間\n';
+            [...allLogs].reverse().forEach(row => {
                 csvContent += `"${row.Username}",${row.Phase},${row.PhaseType},${row.Trial},${row.Congruency},${row.Word},${row.Color},${row.Audio},${row.Target},${row.Response},${row.Accuracy},${row.RT_ms},"${row.Timestamp}"\n`;
             });
-
             let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             let url = URL.createObjectURL(blob);
             let link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", `Stroop_Master_Database_${new Date().toISOString().slice(0,10)}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            link.href = url; link.download = `Stroop_Master_Database_${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
     </script>
 </head>
 <body>
-
 <div class="container">
     <header>
         <div>
-            <h1>🧠 史楚普效應實驗 - 雲端數據中央後台 (新加坡節點)</h1>
-            <p style="color: #cdcefe; margin: 5px 0 0 0;">通道狀態：🟢 正常即時連線中 ｜ 專案 ID: stroop-8b787</p>
+            <h1>🧠 史楚普效應實驗 - 雲端數據中央後台 (進階管理版)</h1>
+            <p style="color: #cdcefe; margin: 5px 0 0 0;">通道狀態：🟢 正常即時連線中 ｜ 支援即時單筆刪除與全數清理</p>
         </div>
-        <button class="btn" onclick="exportAllCSV()">📥 匯出完整全體數據 (Excel CSV)</button>
+        <div class="btn-group">
+            <button class="btn btn-csv" onclick="exportAllCSV()">📥 匯出全體數據 (CSV)</button>
+            <button class="btn btn-clear" onclick="clearAllDatabase()">💥 清空全體數據</button>
+        </div>
     </header>
 
     <div class="dashboard-grid">
-        <div class="card">
-            <h3>受試者總人數</h3>
-            <div class="value" id="metric-users">0</div>
-        </div>
-        <div class="card">
-            <h3>資料庫總累計試次 (Trials)</h3>
-            <div class="value" id="metric-trials">0</div>
-        </div>
-        <div class="card">
-            <h3>全體有效平均反應時間</h3>
-            <div class="value" id="metric-rt">0 ms</div>
-        </div>
+        <div class="card"><h3>受試者總人數</h3><div class="value" id="metric-users">0</div></div>
+        <div class="card"><h3>資料庫總累計試次 (Trials)</h3><div class="value" id="metric-trials">0</div></div>
+        <div class="card"><h3>全體有效平均反應時間</h3><div class="value" id="metric-rt">0 ms</div></div>
     </div>
 
     <h2>📋 即時觀測數據流 (最新資料排在最上方)</h2>
@@ -262,24 +180,14 @@
         <table>
             <thead>
                 <tr>
-                    <th>受試者</th>
-                    <th>實驗階段</th>
-                    <th>試次</th>
-                    <th>一致性</th>
-                    <th>刺激特徵 (字/色/音)</th>
-                    <th>受試者作答</th>
-                    <th>判定結果</th>
-                    <th>反應時間</th>
+                    <th>受試者</th><th>實驗階段</th><th>試次</th><th>一致性</th><th>刺激特徵 (字/色/音)</th><th>受試者作答</th><th>判定結果</th><th>反應時間</th><th>操作選項</th>
                 </tr>
             </thead>
             <tbody id="data-tbody">
-                <tr>
-                    <td colspan="8" style="text-align:center; color:#cdcefe; padding: 30px;">雲端資料庫同步連線中...</td>
-                </tr>
+                <tr><td colspan="9" style="text-align:center; color:#cdcefe; padding: 30px;">雲端資料庫同步連線中...</td></tr>
             </tbody>
         </table>
     </div>
 </div>
-
 </body>
 </html>
