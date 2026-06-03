@@ -105,13 +105,21 @@
             color: #ffb74d;
             font-style: italic;
         }
+        .debug-box {
+            background: #24293c;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #ff4a4a;
+            display: none;
+        }
     </style>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // ✅ 已經同步套入你專屬的 Firebase Config 欄位
+        // ✅ 這裡已經完美置入你的真實 Firebase Config 憑證
         const firebaseConfig = {
             apiKey: "AIzaSyA8n5tXK2ObAWT9KU5j8I3FWtC2SWxQi9U",
             authDomain: "stroop-8b787.firebaseapp.com",
@@ -123,6 +131,7 @@
             measurementId: "G-MVT8W43KLX"
         };
 
+        // 初始化 Firebase
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
@@ -133,28 +142,42 @@
         window.onload = function() {
             const dbRef = database.ref('stroop_results');
             
+            // 開啟資料庫即時監聽
             dbRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 allLogs = [];
                 
+                // 隱藏錯誤提示（如果連線成功）
+                document.getElementById('debug-container').style.display = 'none';
+
                 if (data) {
                     Object.keys(data).forEach(key => {
                         allLogs.push(data[key]);
                     });
+                    // 時間倒序排列（最新作答顯示在最上面）
                     allLogs.reverse(); 
                 }
                 
                 calculateMetrics(allLogs);
                 renderTable(allLogs);
             }, (error) => {
-                console.error("讀取 Firebase 失敗，請確認資料庫 Rules 規則已開啟:", error);
+                console.error("Firebase 連線失敗:", error);
+                // 顯示錯誤訊息在畫面上，方便你在手機或線上直接除錯
+                const debugBox = document.getElementById('debug-container');
+                debugBox.style.display = 'block';
+                debugBox.innerHTML = `❌ <b>Firebase 連線失敗！</b><br>錯誤原因：${error.message}<br><br>💡 <i>小提示：請確認你 Firebase 後台的 Realtime Database 內的「Rules（規則）」已將 read 與 write 改為 true，並點擊發布。</i>`;
             });
         };
 
+        // 📊 計算圓餅儀表數據
         function calculateMetrics(logs) {
             const totalTrials = logs.length;
+            
+            // 受試者去重
             const uniqueUsers = new Set(logs.map(log => log.Username));
             const totalUsers = uniqueUsers.size;
+            
+            // 平均反應時間（排除超時試次）
             const validRTs = logs.filter(log => log.Response !== 'Timeout').map(log => log.RT_ms);
             const avgRT = validRTs.length > 0 
                 ? Math.round(validRTs.reduce((a, b) => a + b, 0) / validRTs.length) 
@@ -165,12 +188,13 @@
             document.getElementById('metric-rt').innerText = avgRT + " ms";
         }
 
+        // 📋 渲染流水帳表格
         function renderTable(logs) {
             const tbody = document.getElementById('data-tbody');
             tbody.innerHTML = '';
 
             if (logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#cdcefe;">目前資料庫尚無受試者數據。</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#cdcefe; padding: 20px;">目前雲端資料庫內沒有任何數據，請前台網頁進行作答。</td></tr>`;
                 return;
             }
 
@@ -179,6 +203,7 @@
             logs.forEach(log => {
                 let tr = document.createElement('tr');
                 let accHtml = '';
+                
                 if (log.Response === 'Timeout') {
                     accHtml = `<span class="status-timeout">超時 (3s)</span>`;
                 } else {
@@ -192,10 +217,10 @@
                     <td>階段 ${log.Phase || '-'} (${typeMapping[log.PhaseType] || log.PhaseType})</td>
                     <td>第 ${log.Trial || '-'} 題</td>
                     <td>${log.Congruency === 'Congruent' ? '一致' : '不一致'}</td>
-                    <td>${log.Word} / <span style="color:${getColorCode(log.Color)}">${log.Color}</span> / 🔊${log.Audio}</td>
+                    <td>${log.Word || '-'} / <span style="color:${getColorCode(log.Color)}">${log.Color || '-'}</span> / 🔊${log.Audio || '-'}</td>
                     <td>${log.Response === 'Timeout' ? '-' : log.Response}</td>
                     <td>${accHtml}</td>
-                    <td><b>${log.RT_ms}</b> ms</td>
+                    <td><b>${log.RT_ms || '0'}</b> ms</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -206,6 +231,7 @@
             return codes[colorStr] || '#fff';
         }
 
+        // 📥 匯出全體大數據 CSV 檔
         function exportAllCSV() {
             if (allLogs.length === 0) {
                 alert("目前沒有數據可以導出！");
@@ -215,6 +241,7 @@
             let csvContent = '\uFEFF'; 
             csvContent += "受試者代號,實驗階段,任務類型,試次編號,刺激一致性,呈現字面,呈現顏色,播放聲音,正確目標,受試者反應,是否正確(1=是),反應時間(ms),紀錄時間\n";
             
+            // 反轉回正常時間順序（舊到新）匯出
             const exportData = [...allLogs].reverse();
 
             exportData.forEach(row => {
@@ -239,10 +266,12 @@
     <header>
         <div>
             <h1>🧠 史楚普效應實驗 - 雲端數據中央後台</h1>
-            <p style="color: #cdcefe; margin: 5px 0 0 0;">專案 ID: stroop-8b787 ｜ 本後台已與雲端即時連線。</p>
+            <p style="color: #cdcefe; margin: 5px 0 0 0;">專案 ID: stroop-8b787 ｜ 已配置 GitHub Pages 專屬安全連線機制。</p>
         </div>
         <button class="btn" onclick="exportAllCSV()">📥 匯出完整全體數據 (Excel CSV)</button>
     </header>
+
+    <div id="debug-container" class="debug-box"></div>
 
     <div class="dashboard-grid">
         <div class="card">
@@ -276,7 +305,7 @@
             </thead>
             <tbody id="data-tbody">
                 <tr>
-                    <td colspan="8" style="text-align:center; color:#cdcefe; padding: 30px;">雲端資料庫連線中...</td>
+                    <td colspan="8" style="text-align:center; color:#cdcefe; padding: 30px;">雲端資料庫同步連線中...</td>
                 </tr>
             </tbody>
         </table>
